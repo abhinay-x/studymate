@@ -13,7 +13,7 @@ import time
 app = Flask(__name__)
 
 # Initialize model and tokenizer
-MODEL_NAME = "microsoft/DialoGPT-medium"  # Lightweight model for testing
+MODEL_NAME = "ibm-granite/granite-3.3-2b-instruct"  # IBM Granite model
 print(f"Loading model: {MODEL_NAME}")
 
 try:
