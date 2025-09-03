@@ -63,7 +63,7 @@ function ChatInterface() {
             const formData = new FormData();
             formData.append('file', file.file);
             
-            const uploadResponse = await fetch('http://localhost:8000/upload', {
+            const uploadResponse = await fetch('http://localhost:5000/api/upload', {
               method: 'POST',
               body: formData
             });
@@ -80,7 +80,7 @@ function ChatInterface() {
                                   `PDF processing failed: ${uploadData.error_message || 'Unknown error'}`;
                 } else {
                   // Search the uploaded document for relevant content
-                  const searchResponse = await fetch('http://localhost:8000/search', {
+                  const searchResponse = await fetch('http://localhost:5000/api/search', {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',
@@ -119,7 +119,7 @@ function ChatInterface() {
               }
             } else {
               console.error('Upload request failed');
-              documentContext = 'Failed to upload PDF. Please check if the AI server is running on port 8000.';
+              documentContext = 'Failed to upload PDF. Please check if the AI server is running on port 5000.';
             }
           }
         }
@@ -132,7 +132,7 @@ function ChatInterface() {
       }
 
       // Call unified AI server with OpenAI-compatible API
-      const response = await fetch('http://localhost:8000/v1/chat/completions', {
+      const response = await fetch('http://localhost:5000/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -173,7 +173,7 @@ function ChatInterface() {
       const aiMessage = {
         id: Date.now() + 1,
         type: 'assistant',
-        content: `Sorry, I'm having trouble connecting to the AI server. Please make sure the unified AI server is running on http://localhost:8000 and try again.`,
+        content: `Sorry, I'm having trouble connecting to the AI server. Please make sure the unified AI server is running on http://localhost:5000 and try again.`,
         timestamp: new Date()
       }
       setMessages(prev => [...prev, aiMessage])
