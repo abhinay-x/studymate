@@ -1,0 +1,133 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: studymate-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: studymate123
+      MONGO_INITDB_DATABASE: studymate
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - studymate-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: studymate-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - studymate-network
+
+  # Main Node.js Backend
+  backend:
+    build: .
+    container_name: studymate-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      MONGODB_URI: mongodb://admin:studymate123@mongodb:27017/studymate?authSource=admin
+      JWT_SECRET: ${JWT_SECRET}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+      HUGGINGFACE_API_KEY: ${HUGGINGFACE_API_KEY}
+      PDF_SERVICE_URL: http://pdf-processor:5001
+      EMBEDDING_SERVICE_URL: http://embedding-service:5002
+      VLLM_API_URL: http://vllm:8000
+      FRONTEND_URL: http://localhost:5173
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongodb
+      - redis
+      - vllm
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - studymate-network
+
+  # PDF Processing Service
+  pdf-processor:
+    build: ./python-services/pdf-processor
+    container_name: studymate-pdf-processor
+    restart: unless-stopped
+    environment:
+      MONGODB_URI: mongodb://admin:studymate123@mongodb:27017/studymate?authSource=admin
+    ports:
+      - "5001:5001"
+    depends_on:
+      - mongodb
+    networks:
+      - studymate-network
+
+  # Embedding Service
+  embedding-service:
+    build: ./python-services/embedding-service
+    container_name: studymate-embedding-service
+    restart: unless-stopped
+    environment:
+      MONGODB_URI: mongodb://admin:studymate123@mongodb:27017/studymate?authSource=admin
+    ports:
+      - "5002:5002"
+    depends_on:
+      - mongodb
+    volumes:
+      - embedding_models:/app/models
+    networks:
+      - studymate-network
+
+  # vLLM OpenAI-compatible inference server
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: studymate-vllm
+    restart: unless-stopped
+    # Choose a small CPU-friendly default; change to your preferred HF model.
+    # For larger models and GPU, add appropriate runtime settings and drivers.
+    command: ["--model", "Qwen/Qwen2.5-0.5B-Instruct", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      # Optional: set HF token if the model requires it
+      # HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN}
+      VLLM_ALLOW_CPU_OFFLOAD: "1"
+    ports:
+      - "8000:8000"
+    volumes:
+      - vllm_cache:/root/.cache/huggingface
+    networks:
+      - studymate-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: studymate-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+    networks:
+      - studymate-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+  embedding_models:
+  vllm_cache:
+
+networks:
+  studymate-network:
+    driver: bridge

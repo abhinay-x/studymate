@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Network, Search, Plus, Minus, RotateCcw, Download, Share } from 'lucide-react'
+import { Network, Search, Plus, Minus, RotateCcw, Download, Share, Filter, Maximize2, Play, Pause } from 'lucide-react'
 
 function KnowledgeGraph({ documents, questions = [] }) {
   const [nodes, setNodes] = useState([])
@@ -9,6 +9,9 @@ function KnowledgeGraph({ documents, questions = [] }) {
   const [zoomLevel, setZoomLevel] = useState(1)
   const canvasRef = useRef(null)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 })
+  const [isAnimating, setIsAnimating] = useState(false)
+  const [filterType, setFilterType] = useState('all')
+  const [showClusters, setShowClusters] = useState(true)
 
   // Generate knowledge graph from documents and Q&A
   useEffect(() => {
@@ -57,27 +60,27 @@ function KnowledgeGraph({ documents, questions = [] }) {
       })
     })
 
-    // Add sample knowledge graph if no data
+      // Add sample knowledge graph if no data
     if (concepts.size === 0) {
       const sampleNodes = [
-        { id: 'ml', name: 'Machine Learning', type: 'concept', source: 'ML Textbook', frequency: 10, x: 400, y: 200, connections: ['supervised', 'unsupervised', 'reinforcement'] },
-        { id: 'supervised', name: 'Supervised Learning', type: 'concept', source: 'ML Textbook', frequency: 8, x: 200, y: 150, connections: ['classification', 'regression'] },
-        { id: 'unsupervised', name: 'Unsupervised Learning', type: 'concept', source: 'ML Textbook', frequency: 6, x: 600, y: 150, connections: ['clustering', 'dimensionality'] },
-        { id: 'reinforcement', name: 'Reinforcement Learning', type: 'concept', source: 'ML Textbook', frequency: 4, x: 400, y: 350, connections: ['rewards', 'policy'] },
-        { id: 'classification', name: 'Classification', type: 'learned', source: 'Q&A Session', frequency: 5, x: 100, y: 100, connections: ['decision-trees', 'svm'] },
-        { id: 'regression', name: 'Regression', type: 'learned', source: 'Q&A Session', frequency: 5, x: 300, y: 100, connections: ['linear', 'polynomial'] },
-        { id: 'clustering', name: 'Clustering', type: 'concept', source: 'ML Textbook', frequency: 4, x: 500, y: 100, connections: ['kmeans', 'hierarchical'] },
-        { id: 'dimensionality', name: 'Dimensionality Reduction', type: 'concept', source: 'ML Textbook', frequency: 3, x: 700, y: 100, connections: ['pca', 'tsne'] },
-        { id: 'decision-trees', name: 'Decision Trees', type: 'learned', source: 'Q&A Session', frequency: 3, x: 50, y: 50, connections: [] },
-        { id: 'svm', name: 'Support Vector Machines', type: 'learned', source: 'Q&A Session', frequency: 3, x: 150, y: 50, connections: [] },
-        { id: 'linear', name: 'Linear Regression', type: 'learned', source: 'Q&A Session', frequency: 4, x: 250, y: 50, connections: [] },
-        { id: 'polynomial', name: 'Polynomial Regression', type: 'learned', source: 'Q&A Session', frequency: 2, x: 350, y: 50, connections: [] },
-        { id: 'kmeans', name: 'K-Means', type: 'learned', source: 'Q&A Session', frequency: 3, x: 450, y: 50, connections: [] },
-        { id: 'hierarchical', name: 'Hierarchical Clustering', type: 'learned', source: 'Q&A Session', frequency: 2, x: 550, y: 50, connections: [] },
-        { id: 'pca', name: 'Principal Component Analysis', type: 'learned', source: 'Q&A Session', frequency: 3, x: 650, y: 50, connections: [] },
-        { id: 'tsne', name: 't-SNE', type: 'learned', source: 'Q&A Session', frequency: 2, x: 750, y: 50, connections: [] },
-        { id: 'rewards', name: 'Reward Systems', type: 'concept', source: 'ML Textbook', frequency: 2, x: 350, y: 400, connections: [] },
-        { id: 'policy', name: 'Policy Learning', type: 'concept', source: 'ML Textbook', frequency: 2, x: 450, y: 400, connections: [] }
+        { id: 'ml', name: 'Machine Learning', type: 'concept', source: 'ML Textbook', frequency: 10, x: 400, y: 200, connections: ['supervised', 'unsupervised', 'reinforcement'], cluster: 'core' },
+        { id: 'supervised', name: 'Supervised Learning', type: 'concept', source: 'ML Textbook', frequency: 8, x: 200, y: 150, connections: ['classification', 'regression'], cluster: 'supervised' },
+        { id: 'unsupervised', name: 'Unsupervised Learning', type: 'concept', source: 'ML Textbook', frequency: 6, x: 600, y: 150, connections: ['clustering', 'dimensionality'], cluster: 'unsupervised' },
+        { id: 'reinforcement', name: 'Reinforcement Learning', type: 'concept', source: 'ML Textbook', frequency: 4, x: 400, y: 350, connections: ['rewards', 'policy'], cluster: 'reinforcement' },
+        { id: 'classification', name: 'Classification', type: 'learned', source: 'Q&A Session', frequency: 5, x: 100, y: 100, connections: ['decision-trees', 'svm'], cluster: 'supervised' },
+        { id: 'regression', name: 'Regression', type: 'learned', source: 'Q&A Session', frequency: 5, x: 300, y: 100, connections: ['linear', 'polynomial'], cluster: 'supervised' },
+        { id: 'clustering', name: 'Clustering', type: 'concept', source: 'ML Textbook', frequency: 4, x: 500, y: 100, connections: ['kmeans', 'hierarchical'], cluster: 'unsupervised' },
+        { id: 'dimensionality', name: 'Dimensionality Reduction', type: 'concept', source: 'ML Textbook', frequency: 3, x: 700, y: 100, connections: ['pca', 'tsne'], cluster: 'unsupervised' },
+        { id: 'decision-trees', name: 'Decision Trees', type: 'learned', source: 'Q&A Session', frequency: 3, x: 50, y: 50, connections: [], cluster: 'supervised' },
+        { id: 'svm', name: 'Support Vector Machines', type: 'learned', source: 'Q&A Session', frequency: 3, x: 150, y: 50, connections: [], cluster: 'supervised' },
+        { id: 'linear', name: 'Linear Regression', type: 'learned', source: 'Q&A Session', frequency: 4, x: 250, y: 50, connections: [], cluster: 'supervised' },
+        { id: 'polynomial', name: 'Polynomial Regression', type: 'learned', source: 'Q&A Session', frequency: 2, x: 350, y: 50, connections: [], cluster: 'supervised' },
+        { id: 'kmeans', name: 'K-Means', type: 'learned', source: 'Q&A Session', frequency: 3, x: 450, y: 50, connections: [], cluster: 'unsupervised' },
+        { id: 'hierarchical', name: 'Hierarchical Clustering', type: 'learned', source: 'Q&A Session', frequency: 2, x: 550, y: 50, connections: [], cluster: 'unsupervised' },
+        { id: 'pca', name: 'Principal Component Analysis', type: 'learned', source: 'Q&A Session', frequency: 3, x: 650, y: 50, connections: [], cluster: 'unsupervised' },
+        { id: 'tsne', name: 't-SNE', type: 'learned', source: 'Q&A Session', frequency: 2, x: 750, y: 50, connections: [], cluster: 'unsupervised' },
+        { id: 'rewards', name: 'Reward Systems', type: 'concept', source: 'ML Textbook', frequency: 2, x: 350, y: 400, connections: [], cluster: 'reinforcement' },
+        { id: 'policy', name: 'Policy Learning', type: 'concept', source: 'ML Textbook', frequency: 2, x: 450, y: 400, connections: [], cluster: 'reinforcement' }
       ]
       
       sampleNodes.forEach(node => concepts.set(node.id, node))
@@ -130,16 +133,38 @@ function KnowledgeGraph({ documents, questions = [] }) {
     return concepts
   }
 
-  const filteredNodes = nodes.filter(node => 
-    node.name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredNodes = nodes.filter(node => {
+    const matchesSearch = node.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesFilter = filterType === 'all' || node.type === filterType
+    return matchesSearch && matchesFilter
+  })
 
   const getNodeColor = (node) => {
+    if (showClusters && node.cluster) {
+      switch (node.cluster) {
+        case 'core': return '#8B5CF6' // Purple
+        case 'supervised': return '#10B981' // Green
+        case 'unsupervised': return '#3B82F6' // Blue
+        case 'reinforcement': return '#F59E0B' // Orange
+        default: return '#64748B' // Slate
+      }
+    }
+    
     switch (node.type) {
       case 'concept': return '#1E40AF' // Primary blue
       case 'learned': return '#059669' // Secondary green
       case 'document': return '#F59E0B' // Accent amber
       default: return '#64748B' // Slate
+    }
+  }
+
+  const getClusterColor = (cluster) => {
+    switch (cluster) {
+      case 'core': return '#8B5CF6'
+      case 'supervised': return '#10B981'
+      case 'unsupervised': return '#3B82F6'
+      case 'reinforcement': return '#F59E0B'
+      default: return '#64748B'
     }
   }
 
@@ -174,6 +199,19 @@ function KnowledgeGraph({ documents, questions = [] }) {
             <span>🧠 Knowledge Network</span>
           </h3>
           <div className="flex space-x-2">
+            <button 
+              onClick={() => setIsAnimating(!isAnimating)}
+              className={`p-2 rounded-lg transition-colors ${
+                isAnimating 
+                  ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              {isAnimating ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            </button>
+            <button className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
+              <Maximize2 className="w-4 h-4" />
+            </button>
             <button className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
               <Download className="w-4 h-4" />
             </button>
@@ -195,6 +233,31 @@ function KnowledgeGraph({ documents, questions = [] }) {
               className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
             />
           </div>
+          
+          <div className="flex items-center space-x-2">
+            <Filter className="w-4 h-4 text-slate-500" />
+            <select 
+              value={filterType} 
+              onChange={(e) => setFilterType(e.target.value)}
+              className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            >
+              <option value="all">All Types</option>
+              <option value="concept">Concepts</option>
+              <option value="learned">Learned</option>
+              <option value="document">Documents</option>
+            </select>
+          </div>
+          
+          <button
+            onClick={() => setShowClusters(!showClusters)}
+            className={`px-3 py-2 text-xs rounded-lg transition-colors ${
+              showClusters 
+                ? 'bg-primary-100 text-primary-700' 
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            {showClusters ? 'Hide Clusters' : 'Show Clusters'}
+          </button>
           <div className="flex space-x-1">
             <button
               onClick={handleZoomOut}
@@ -273,27 +336,73 @@ function KnowledgeGraph({ documents, questions = [] }) {
               >
                 {node.name.length > 10 ? node.name.substring(0, 10) + '...' : node.name}
               </text>
+              
+              {/* Pulse animation for selected or important nodes */}
+              {(selectedNode?.id === node.id || isAnimating) && (
+                <circle
+                  cx={node.x * zoomLevel}
+                  cy={node.y * zoomLevel}
+                  r={getNodeSize(node.frequency) * zoomLevel + 10}
+                  fill="none"
+                  stroke={getNodeColor(node)}
+                  strokeWidth="2"
+                  opacity="0.3"
+                  className={isAnimating ? 'animate-ping' : ''}
+                />
+              )}
             </g>
           ))}
         </svg>
 
         {/* Legend */}
-        <div className="absolute top-4 left-4 bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
+        <div className="absolute top-4 left-4 bg-white border border-slate-200 rounded-lg p-3 shadow-sm max-w-xs">
           <h4 className="text-sm font-medium text-slate-900 mb-2">Legend</h4>
           <div className="space-y-2 text-xs">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-primary-600"></div>
-              <span>Concepts from Documents</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-secondary-600"></div>
-              <span>Learned from Q&A</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-accent-600"></div>
-              <span>Document Sources</span>
-            </div>
+            {showClusters ? (
+              <>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#8B5CF6' }}></div>
+                  <span>Core Concepts</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#10B981' }}></div>
+                  <span>Supervised Learning</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#3B82F6' }}></div>
+                  <span>Unsupervised Learning</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#F59E0B' }}></div>
+                  <span>Reinforcement Learning</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full bg-primary-600"></div>
+                  <span>Concepts from Documents</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full bg-secondary-600"></div>
+                  <span>Learned from Q&A</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full bg-accent-600"></div>
+                  <span>Document Sources</span>
+                </div>
+              </>
+            )}
           </div>
+          
+          {isAnimating && (
+            <div className="mt-3 pt-2 border-t border-slate-200">
+              <div className="flex items-center space-x-2 text-green-600">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-xs">Live Animation</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,135 +1,211 @@
-import { useState } from 'react'
-import Header from './components/Header'
-import DocumentManager from './components/DocumentManager'
-import ChatInterface from './components/ChatInterface'
-import StudyTools from './components/StudyTools'
-import WelcomeModal from './components/WelcomeModal'
-import { FileText, MessageSquare, BarChart3, Settings } from 'lucide-react'
+import React from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
+import { ThemeProvider } from './contexts/ThemeContext'
+import ProtectedRoute from './components/common/ProtectedRoute'
+import LandingPageWrapper from './pages/LandingPage'
+import SignupPage from './pages/SignupPage'
+import SigninPage from './pages/SigninPage'
+import DashboardPage from './pages/DashboardPage'
+import AIChatPage from './pages/AIChatPage'
+import FlashcardsPage from './pages/FlashcardsPage'
+import AnalyticsPage from './pages/AnalyticsPage'
+import MindMapPage from './pages/MindMapPage'
+import AIInsightsPage from './pages/AIInsightsPage'
+import StudyBuddyPage from './pages/StudyBuddyPage'
+import SchedulerPage from './pages/SchedulerPage'
+import VirtualClassroomPage from './pages/VirtualClassroomPage'
+import GamificationPage from './pages/GamificationPage'
+import MentalHealthPage from './pages/MentalHealthPage'
+import ARStudyPage from './pages/ARStudyPage'
+import DocumentsPage from './pages/DocumentsPage'
+import ProfilePage from './pages/ProfilePage'
+import SettingsPage from './pages/SettingsPage'
+import UniversalHeader from './components/layout/UniversalHeader'
+import ScrollToTop from './components/common/ScrollToTop'
 
 function App() {
-  const [showWelcome, setShowWelcome] = useState(true)
-  const [selectedDocument, setSelectedDocument] = useState(null)
-  const [uploadedDocuments, setUploadedDocuments] = useState([])
-  const [chatQuestions, setChatQuestions] = useState([])
-  const [activeView, setActiveView] = useState('chat') // For mobile navigation
-
   return (
-    <div className="min-h-screen bg-slate-50">
-      {showWelcome && (
-        <WelcomeModal onClose={() => setShowWelcome(false)} />
-      )}
-      
-      <Header />
-      
-      <main className="flex h-screen pt-16">
-        {/* Desktop Layout - Three Panel */}
-        <div className="hidden lg:flex w-full">
-          {/* Document Manager - Left Panel */}
-          <div className="w-80 border-r border-slate-200 bg-white">
-            <DocumentManager 
-              documents={uploadedDocuments}
-              onDocumentSelect={setSelectedDocument}
-              onDocumentUpload={setUploadedDocuments}
-            />
-          </div>
-          
-          {/* Chat Interface - Center Panel */}
-          <div className="flex-1 flex flex-col">
-            <ChatInterface 
-              selectedDocument={selectedDocument}
-              documents={uploadedDocuments}
-            />
-          </div>
-          
-          {/* Study Tools - Right Panel */}
-          <div className="w-80 border-l border-slate-200 bg-white">
-            <StudyTools 
-              documents={uploadedDocuments}
-              questions={chatQuestions}
-            />
-          </div>
-        </div>
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <ScrollToTop />
+          <div className="App">
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<LandingPageWrapper />} />
+              <Route path="/signup" element={<SignupPage />} />
+              <Route path="/signin" element={<SigninPage />} />
 
-        {/* Mobile Layout - Single Panel with Bottom Navigation */}
-        <div className="lg:hidden w-full pb-16">
-          {activeView === 'documents' && (
-            <DocumentManager 
-              documents={uploadedDocuments}
-              onDocumentSelect={setSelectedDocument}
-              onDocumentUpload={setUploadedDocuments}
-            />
-          )}
-          
-          {activeView === 'chat' && (
-            <ChatInterface 
-              selectedDocument={selectedDocument}
-              documents={uploadedDocuments}
-              onQuestionsUpdate={setChatQuestions}
-            />
-          )}
-          
-          {activeView === 'analytics' && (
-            <StudyTools 
-              documents={uploadedDocuments}
-              questions={chatQuestions}
-            />
-          )}
-          
-          {activeView === 'settings' && (
-            <div className="p-6">
-              <div className="bg-white rounded-lg border border-slate-200 p-8 text-center">
-                <Settings className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">Settings</h3>
-                <p className="text-slate-600">App settings and preferences coming soon!</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </main>
+              {/* Protected Routes with Universal Header */}
+              <Route path="/dashboard" element={
+                <ProtectedRoute requireAuth={true}>
+                  <DashboardPage />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/chat" element={
+                <ProtectedRoute requireAuth={true}>
+                  <>
+                    <UniversalHeader />
+                    <div className="pt-16">
+                      <AIChatPage />
+                    </div>
+                  </>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/flashcards" element={
+                <ProtectedRoute requireAuth={true}>
+                  <>
+                    <UniversalHeader />
+                    <div className="pt-16">
+                      <FlashcardsPage />
+                    </div>
+                  </>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/analytics" element={
+                <ProtectedRoute requireAuth={true}>
+                  <>
+                    <UniversalHeader />
+                    <div className="pt-16">
+                      <AnalyticsPage />
+                    </div>
+                  </>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/mindmap" element={
+                <ProtectedRoute requireAuth={true}>
+                  <>
+                    <UniversalHeader />
+                    <div className="pt-16">
+                      <MindMapPage />
+                    </div>
+                  </>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/ai-insights" element={
+                <ProtectedRoute requireAuth={true}>
+                  <>
+                    <UniversalHeader />
+                    <div className="pt-16">
+                      <AIInsightsPage />
+                    </div>
+                  </>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/study-buddy" element={
+                <ProtectedRoute requireAuth={true}>
+                  <>
+                    <UniversalHeader />
+                    <div className="pt-16">
+                      <StudyBuddyPage />
+                    </div>
+                  </>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/scheduler" element={
+                <ProtectedRoute requireAuth={true}>
+                  <>
+                    <UniversalHeader />
+                    <div className="pt-16">
+                      <SchedulerPage />
+                    </div>
+                  </>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/classroom" element={
+                <ProtectedRoute requireAuth={true}>
+                  <>
+                    <UniversalHeader />
+                    <div className="pt-16">
+                      <VirtualClassroomPage />
+                    </div>
+                  </>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/gamification" element={
+                <ProtectedRoute requireAuth={true}>
+                  <>
+                    <UniversalHeader />
+                    <div className="pt-16">
+                      <GamificationPage />
+                    </div>
+                  </>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/mental-health" element={
+                <ProtectedRoute requireAuth={true}>
+                  <>
+                    <UniversalHeader />
+                    <div className="pt-16">
+                      <MentalHealthPage />
+                    </div>
+                  </>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/ar-study" element={
+                <ProtectedRoute requireAuth={true}>
+                  <>
+                    <UniversalHeader />
+                    <div className="pt-16">
+                      <ARStudyPage />
+                    </div>
+                  </>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/documents" element={
+                <ProtectedRoute requireAuth={true}>
+                  <>
+                    <UniversalHeader />
+                    <div className="pt-16">
+                      <DocumentsPage />
+                    </div>
+                  </>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/profile" element={
+                <ProtectedRoute requireAuth={true}>
+                  <>
+                    <UniversalHeader />
+                    <div className="pt-16">
+                      <ProfilePage />
+                    </div>
+                  </>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/settings" element={
+                <ProtectedRoute requireAuth={true}>
+                  <>
+                    <UniversalHeader />
+                    <div className="pt-16">
+                      <SettingsPage />
+                    </div>
+                  </>
+                </ProtectedRoute>
+              } />
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2">
-        <div className="flex justify-around">
-          <button 
-            onClick={() => setActiveView('documents')}
-            className={`flex flex-col items-center py-2 px-3 ${
-              activeView === 'documents' ? 'text-primary-600' : 'text-slate-600 hover:text-primary-600'
-            }`}
-          >
-            <FileText className="w-5 h-5" />
-            <span className="text-xs mt-1">Documents</span>
-          </button>
-          <button 
-            onClick={() => setActiveView('chat')}
-            className={`flex flex-col items-center py-2 px-3 ${
-              activeView === 'chat' ? 'text-primary-600' : 'text-slate-600 hover:text-primary-600'
-            }`}
-          >
-            <MessageSquare className="w-5 h-5" />
-            <span className="text-xs mt-1">Chat</span>
-          </button>
-          <button 
-            onClick={() => setActiveView('analytics')}
-            className={`flex flex-col items-center py-2 px-3 ${
-              activeView === 'analytics' ? 'text-primary-600' : 'text-slate-600 hover:text-primary-600'
-            }`}
-          >
-            <BarChart3 className="w-5 h-5" />
-            <span className="text-xs mt-1">Analytics</span>
-          </button>
-          <button 
-            onClick={() => setActiveView('settings')}
-            className={`flex flex-col items-center py-2 px-3 ${
-              activeView === 'settings' ? 'text-primary-600' : 'text-slate-600 hover:text-primary-600'
-            }`}
-          >
-            <Settings className="w-5 h-5" />
-            <span className="text-xs mt-1">Settings</span>
-          </button>
-        </div>
-      </nav>
-    </div>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 
 export default App
+
