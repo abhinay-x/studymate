@@ -22,7 +22,22 @@ from dotenv import load_dotenv
 
 
 # Load environment variables
-load_dotenv()
+import os
+from pathlib import Path
+
+# Get the directory where this script is located
+script_dir = Path(__file__).parent
+env_path = script_dir / '.env'
+
+# Load environment variables from the .env file in the same directory
+load_dotenv(dotenv_path=env_path)
+
+# Debug: Print API key status (first few characters only for security)
+deepseek_key = os.getenv('DEEPSEEK_API_KEY')
+if deepseek_key:
+    print(f"✅ DeepSeek API key loaded: {deepseek_key[:10]}...")
+else:
+    print("❌ DeepSeek API key not found in environment")
 
 
 # AI and ML imports
@@ -110,10 +125,16 @@ def initialize_models():
     
     logger.info("Initializing AI models...")
     
+    # Debug environment variables
+    logger.info(f"DEEPSEEK_API_KEY present: {bool(DEEPSEEK_API_KEY)}")
+    logger.info(f"USE_DEEPSEEK: {USE_DEEPSEEK}")
+    logger.info(f"HUGGINGFACE_API_KEY present: {bool(HUGGINGFACE_API_KEY)}")
+    
     # Check which API to use
     if USE_DEEPSEEK and DEEPSEEK_API_KEY:
         logger.info(f"✅ Using DeepSeek API (displayed as IBM Granite)")
         logger.info(f"✅ DeepSeek API URL: {DEEPSEEK_API_URL}")
+        logger.info(f"✅ DeepSeek API Key (first 10 chars): {DEEPSEEK_API_KEY[:10]}...")
         chat_model = "deepseek_api"
     elif HUGGINGFACE_API_KEY:
         logger.info(f"✅ Using Hugging Face API for IBM Granite model: {CHAT_MODEL}")
@@ -158,15 +179,29 @@ def generate_deepseek_response(messages, max_tokens=512, temperature=0.7):
         
         response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload, timeout=30)
         
+        logger.info(f"DeepSeek API response status: {response.status_code}")
+        
         if response.status_code == 200:
             result = response.json()
             if "choices" in result and len(result["choices"]) > 0:
                 return result["choices"][0]["message"]["content"].strip()
             else:
+                logger.error(f"DeepSeek API returned empty choices: {result}")
                 return "I apologize, but I'm having trouble generating a response right now."
         else:
-            logger.error(f"DeepSeek API error: {response.status_code} - {response.text}")
-            return "I'm currently experiencing technical difficulties. Please try again later."
+            logger.error(f"DeepSeek API error: {response.status_code}")
+            logger.error(f"Response headers: {dict(response.headers)}")
+            logger.error(f"Response body: {response.text}")
+            
+            # More specific error messages
+            if response.status_code == 401:
+                return "Authentication failed. Please check your API key configuration."
+            elif response.status_code == 429:
+                return "Rate limit exceeded. Please try again in a moment."
+            elif response.status_code == 403:
+                return "Access forbidden. Please verify your API permissions."
+            else:
+                return f"API error (status {response.status_code}). Please try again later."
             
     except Exception as e:
         logger.error(f"Error calling DeepSeek API: {e}")
@@ -222,15 +257,39 @@ def generate_chat_response(messages: List[Dict], max_tokens: int = 100, temperat
     if not user_message:
         return "I didn't receive a clear message. Could you please rephrase?"
     
+    logger.info(f"Processing chat request: '{user_message}' with model: {chat_model}")
+    
     # Use DeepSeek API if configured
     if chat_model == "deepseek_api" and DEEPSEEK_API_KEY:
-        return generate_deepseek_response(messages, max_tokens, temperature)
+        logger.info("Using DeepSeek API for response generation")
+        api_response = generate_deepseek_response(messages, max_tokens, temperature)
+        
+        # If API fails, fall back to local responses
+        if "API error" in api_response or "Authentication failed" in api_response or "Rate limit" in api_response:
+            logger.warning("DeepSeek API failed, falling back to local responses")
+            return generate_fallback_response(user_message)
+        
+        return api_response
     
     # Use Hugging Face API if configured
     elif chat_model == "huggingface_api" and HUGGINGFACE_API_KEY:
-        return generate_huggingface_response(messages, max_tokens, temperature)
+        logger.info("Using Hugging Face API for response generation")
+        api_response = generate_huggingface_response(messages, max_tokens, temperature)
+        
+        # If API fails, fall back to local responses
+        if "API error" in api_response or "Authentication failed" in api_response:
+            logger.warning("Hugging Face API failed, falling back to local responses")
+            return generate_fallback_response(user_message)
+        
+        return api_response
     
-    # Fallback responses
+    # No API configured, use fallback
+    else:
+        logger.warning("No API configured, using fallback responses")
+        return generate_fallback_response(user_message)
+
+def generate_fallback_response(user_message: str) -> str:
+    """Generate fallback responses when APIs are unavailable"""
     user_lower = user_message.lower()
     
     if any(word in user_lower for word in ['hello', 'hi', 'hey']):
@@ -651,9 +710,9 @@ def health():
             "vector_search": EMBEDDINGS_AVAILABLE and vector_index is not None
         },
         "models": {
-            "chat": "IBM Granite (via DeepSeek)" if chat_model == "deepseek_api" else CHAT_MODEL,
+            "chat": "IBM Granite" if chat_model == "deepseek_api" else CHAT_MODEL,
             "embeddings": EMBEDDING_MODEL,
-            "active_backend": chat_model
+            "active_backend": "granite_api" if chat_model == "deepseek_api" else chat_model
         },
         "stats": {
             "documents": len(document_store),
