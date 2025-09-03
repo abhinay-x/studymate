@@ -55,15 +55,98 @@ function ChatInterface() {
     setIsTyping(true)
 
     try {
-      // Call actual backend API
-      const response = await fetch('http://localhost:3000/api/conversations/1/messages', {
+      // First, upload any PDF files
+      let documentContext = "";
+      if (attachedFiles.length > 0) {
+        for (const file of attachedFiles) {
+          if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+            const formData = new FormData();
+            formData.append('file', file.file);
+            
+            const uploadResponse = await fetch('http://localhost:8000/upload', {
+              method: 'POST',
+              body: formData
+            });
+            
+            if (uploadResponse.ok) {
+              const uploadData = await uploadResponse.json();
+              console.log('Upload response:', uploadData);
+              
+              if (uploadData.success) {
+                // If PDF processing failed but we have fallback content, use it
+                if (uploadData.is_fallback) {
+                  console.log('Using fallback PDF content');
+                  documentContext = uploadData.chunks?.map(chunk => chunk.content).join('\n\n') || 
+                                  `PDF processing failed: ${uploadData.error_message || 'Unknown error'}`;
+                } else {
+                  // Search the uploaded document for relevant content
+                  const searchResponse = await fetch('http://localhost:8000/search', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      query: currentQuestion,
+                      top_k: 5
+                    })
+                  });
+                  
+                  if (searchResponse.ok) {
+                    const searchData = await searchResponse.json();
+                    console.log('Search response:', searchData);
+                    
+                    if (searchData.success && searchData.results.length > 0) {
+                      documentContext = searchData.results.map(r => r.content).join('\n\n');
+                    } else {
+                      // If search fails or returns no results, use all chunks from upload
+                      console.log('Search returned no results, using all chunks');
+                      documentContext = uploadData.chunks?.map(chunk => chunk.content).join('\n\n') || '';
+                    }
+                  } else {
+                    // Handle different error status codes
+                    const errorData = await searchResponse.json().catch(() => ({}));
+                    if (searchResponse.status === 503) {
+                      console.warn('Search service unavailable (embeddings not initialized), using all chunks');
+                    } else {
+                      console.error(`Search failed with status ${searchResponse.status}:`, errorData.error || 'Unknown error');
+                    }
+                    documentContext = uploadData.chunks?.map(chunk => chunk.content).join('\n\n') || '';
+                  }
+                }
+              } else {
+                console.error('Upload failed:', uploadData.error);
+                documentContext = `Failed to process PDF: ${uploadData.error}. Please try uploading a different PDF file.`;
+              }
+            } else {
+              console.error('Upload request failed');
+              documentContext = 'Failed to upload PDF. Please check if the AI server is running on port 8000.';
+            }
+          }
+        }
+      }
+      
+      // Prepare the message with document context
+      let messageContent = currentQuestion;
+      if (documentContext) {
+        messageContent = `Based on the uploaded document, please answer: ${currentQuestion}\n\nDocument content:\n${documentContext}`;
+      }
+
+      // Call unified AI server with OpenAI-compatible API
+      const response = await fetch('http://localhost:8000/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          content: currentQuestion,
-          attachments: attachedFiles
+          model: "ibm-granite/granite-3.3-2b-instruct",
+          messages: [
+            {
+              role: "user",
+              content: messageContent
+            }
+          ],
+          max_tokens: 512,
+          temperature: 0.7
         })
       })
 
@@ -73,11 +156,11 @@ function ChatInterface() {
 
       const data = await response.json()
       
-      if (data.success && data.data.assistantMessage) {
+      if (data.choices && data.choices[0] && data.choices[0].message) {
         const aiMessage = {
           id: Date.now() + 1,
           type: 'assistant',
-          content: data.data.assistantMessage.content,
+          content: data.choices[0].message.content,
           timestamp: new Date()
         }
         setMessages(prev => [...prev, aiMessage])
@@ -90,7 +173,7 @@ function ChatInterface() {
       const aiMessage = {
         id: Date.now() + 1,
         type: 'assistant',
-        content: `Sorry, I'm having trouble connecting to the server right now. Please make sure the backend is running on http://localhost:3000 and try again.`,
+        content: `Sorry, I'm having trouble connecting to the AI server. Please make sure the unified AI server is running on http://localhost:8000 and try again.`,
         timestamp: new Date()
       }
       setMessages(prev => [...prev, aiMessage])
